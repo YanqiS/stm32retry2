@@ -4492,12 +4492,15 @@ void MoC_Init() {
 		}
 	}	//////finish reset display xy
 
-	TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;
-	TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;
-	//				TA531_RC1.TA531_RC_Z_code = 1;
-	//				TA531_RC1.TA531_RC_Z_code2 = 0;
-	TA531_RC1_fg = 2;
-	MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
+		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;
+		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;
+		TA531_RC1_fg = 2;
+		while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
+				|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
+			MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
+					TA531_RC1.TA531_RC_Y_trg);
+			HAL_Delay(200);
+		}
 
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Trg: (");
 	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
@@ -4513,10 +4516,15 @@ void MoC_Init() {
 	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 0);	//touch pen release
 	HAL_Delay(200);
 
-	TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX1_32b;
-	TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY1_32b;
-	TA531_RC1_fg = 2;
-	MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
+		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX1_32b;
+		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY1_32b;
+		TA531_RC1_fg = 2;
+		while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
+				|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
+			MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
+					TA531_RC1.TA531_RC_Y_trg);
+			HAL_Delay(200);
+		}
 
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Trg: (");
 	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
@@ -4532,10 +4540,15 @@ void MoC_Init() {
 	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 0);	//touch pen release
 	HAL_Delay(200);
 
-	TA531_RC1_fg = 2;
-	TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;  // 改为X0
-	TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;  // 改为Y0
-	MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
+		TA531_RC1_fg = 2;
+		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;  // 改为X0
+		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;  // 改为Y0
+		while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
+				|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
+			MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
+					TA531_RC1.TA531_RC_Y_trg);
+			HAL_Delay(200);
+		}
 
 	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, str1);
