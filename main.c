@@ -780,9 +780,10 @@ int main(void) {
 
 	SPI_Flash_WtritEnable();
 	HAL_Delay(5);
-	SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(int));
+	SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(temp1));
+	SPI_Flash_WaitNoBusy();
 	HAL_Delay(5);
-	SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(int));
+	SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(temp2));
 	while ((temp1[0] != temp2[0]) || (temp1[1] != temp2[1])
 			|| (temp1[2] != temp2[2]) || (temp1[3] != temp2[3])) {
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Test Err..");
@@ -793,9 +794,12 @@ int main(void) {
 		SPI_Flash_Start(Flash_SPI);
 		HAL_Delay(5);
 
-		SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(int));
+		SPI_Flash_EraseSector(Sys_Addr_DispTest / 4096);
+		HAL_Delay(1);
+		SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(temp1));
+		SPI_Flash_WaitNoBusy();
 		HAL_Delay(5);
-		SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(int));
+		SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(temp2));
 
 		itoa(flash_test_coord, str1, 10);
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, str1);
