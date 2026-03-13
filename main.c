@@ -384,6 +384,8 @@ void SPI_Stop(SPI_HandleTypeDef *hspi);
 void SPI_Flash_Start(SPI_HandleTypeDef *hspi);
 void SPI_TFT_Start(SPI_HandleTypeDef *hspi);
 
+static bool ExternalFlash_SelfHealTest(void);
+
 void Ser2CAN(void);
 uint32_t mRead_ADC1_ch(uint8_t ch);
 void Sys_tune1();
@@ -414,6 +416,92 @@ void Motor_Protection_EmergencyStop(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static bool ExternalFlash_SelfHealTest(void)
+{
+	uint8_t test_pattern_a[4] = { 0xD2, 0x04, 0x00, 0x00 };
+	uint8_t test_pattern_b[4] = { 0x7B, 0x00, 0x00, 0x00 };
+	uint8_t temp[4] = { 0 };
+	uint8_t erased[4] = { 0 };
+	uint16_t flash_id = 0;
+	int retry = 0;
+
+	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash SelfChk");
+
+	while (retry < 2) {
+		SPI_Flash_Start(Flash_SPI);
+		HAL_Delay(2);
+
+		flash_id = SPI_Flash_GetID();
+		if ((flash_id == 0x0000) || (flash_id == 0xFFFF)) {
+			SPI_Stop(Flash_SPI);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash ID Err ");
+			return false;
+		}
+
+		SPI_Flash_WriteSR(0x00);
+		HAL_Delay(1);
+
+		SPI_Flash_EraseSector(Sys_Addr_DispTest / 4096);
+		SPI_Flash_WaitNoBusy();
+		SPI_Flash_ReadBytes(erased, Sys_Addr_DispTest, sizeof(erased));
+		if ((erased[0] != 0xFF) || (erased[1] != 0xFF) || (erased[2] != 0xFF)
+				|| (erased[3] != 0xFF)) {
+			if (retry == 0) {
+				SPI_Flash_EraseChip();
+				SPI_Flash_WaitNoBusy();
+				SPI_Stop(Flash_SPI);
+				retry++;
+				continue;
+			}
+			SPI_Stop(Flash_SPI);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Erase Fail   ");
+			return false;
+		}
+
+		SPI_Flash_WriteSomeBytes(test_pattern_a, Sys_Addr_DispTest,
+				sizeof(test_pattern_a));
+		SPI_Flash_WaitNoBusy();
+		SPI_Flash_ReadBytes(temp, Sys_Addr_DispTest, sizeof(temp));
+		if ((temp[0] != test_pattern_a[0]) || (temp[1] != test_pattern_a[1])
+				|| (temp[2] != test_pattern_a[2]) || (temp[3] != test_pattern_a[3])) {
+			if (retry == 0) {
+				SPI_Flash_EraseChip();
+				SPI_Flash_WaitNoBusy();
+				SPI_Stop(Flash_SPI);
+				retry++;
+				continue;
+			}
+			SPI_Stop(Flash_SPI);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "WriteA Fail  ");
+			return false;
+		}
+
+		SPI_Flash_WriteSomeBytes(test_pattern_b, Sys_Addr_DispTest,
+				sizeof(test_pattern_b));
+		SPI_Flash_WaitNoBusy();
+		SPI_Flash_ReadBytes(temp, Sys_Addr_DispTest, sizeof(temp));
+		if ((temp[0] != test_pattern_b[0]) || (temp[1] != test_pattern_b[1])
+				|| (temp[2] != test_pattern_b[2]) || (temp[3] != test_pattern_b[3])) {
+			if (retry == 0) {
+				SPI_Flash_EraseChip();
+				SPI_Flash_WaitNoBusy();
+				SPI_Stop(Flash_SPI);
+				retry++;
+				continue;
+			}
+			SPI_Stop(Flash_SPI);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "WriteB Fail  ");
+			return false;
+		}
+
+		SPI_Stop(Flash_SPI);
+		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Self OK");
+		return true;
+	}
+
+	return false;
+}
 
 /* USER CODE END 0 */
 
@@ -757,59 +845,12 @@ int main(void) {
 
 //	  HAL_Delay(500);
 
-	uint8_t temp1[4] = { 0 }, temp2[4] = { 0 };
-	int flash_test_coord = 1234;
-	temp1[0] = flash_test_coord & 0xff;
-	temp1[1] = (flash_test_coord >> 8) & 0xff;
-	temp1[2] = (flash_test_coord >> 16) & 0xff;
-	temp1[3] = (flash_test_coord >> 24) & 0xff;
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Test");
-//	while( HAL_GPIO_ReadPin(ESP_TRG_STM_GPIO_Port,ESP_TRG_STM_Pin) )
-//	{
-//		SPI_Stop(Flash_SPI);
-//		HAL_GPIO_WritePin(STM2ESP_GPIO_Port, STM2ESP_Pin, 0);
-//		OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "Flash Test ...");
-//	}
-//	HAL_GPIO_WritePin(STM2ESP_GPIO_Port, STM2ESP_Pin, 0);	//#define STM2ESP_Pin GPIO_PIN_14		#define STM2ESP_GPIO_Port GPIOE
-
-//	SPI_Stop(Flash_SPI);
-//	HAL_Delay(5);
-//
-	SPI_Flash_Start(Flash_SPI);
-	HAL_Delay(5);
-
-	SPI_Flash_WtritEnable();
-	HAL_Delay(5);
-	SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(temp1));
-	SPI_Flash_WaitNoBusy();
-	HAL_Delay(5);
-	SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(temp2));
-	while ((temp1[0] != temp2[0]) || (temp1[1] != temp2[1])
-			|| (temp1[2] != temp2[2]) || (temp1[3] != temp2[3])) {
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Test Err..");
-
-		SPI_Stop(Flash_SPI);
-		HAL_Delay(5);
-
-		SPI_Flash_Start(Flash_SPI);
-		HAL_Delay(5);
-
-		SPI_Flash_EraseSector(Sys_Addr_DispTest / 4096);
-		HAL_Delay(1);
-		SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(temp1));
-		SPI_Flash_WaitNoBusy();
-		HAL_Delay(5);
-		SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(temp2));
-
-		itoa(flash_test_coord, str1, 10);
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, str1);
-		itoa(temp2[0] | (temp2[1] << 8) | (temp2[2] << 16) | (temp2[3] << 24),
-				str1, 10);
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, str1);
+	bool flash_self_ok = ExternalFlash_SelfHealTest();
+	if (!flash_self_ok) {
+		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Need Flash Fix");
+		HAL_Delay(1000);
 	}
 
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Test OK!");
-	HAL_Delay(1000);
 
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "UniqID:");
 	uint64_t UID;
