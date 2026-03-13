@@ -841,13 +841,13 @@ void SPI_Flash_ErasePage(uint32_t pPageAddr)
 void SPI_Flash_EraseSector(uint32_t pSectorAddr)
 {
     uint8_t RxData;
-    uint32_t addr = pSectorAddr & 0xFFF000;
+    uint32_t WrtieAddr = pSectorAddr * 4096;
     uint8_t cmd_buf[4];
 
     cmd_buf[0] = Flash_Erase_Sector;
-    cmd_buf[1] = (uint8_t)((addr >> 16) & 0xff);
-    cmd_buf[2] = (uint8_t)((addr >> 8) & 0xff);
-    cmd_buf[3] = (uint8_t)((addr >> 0) & 0xff);
+    cmd_buf[1] = (uint8_t)((WrtieAddr >> 16) & 0xff);
+    cmd_buf[2] = (uint8_t)((WrtieAddr >> 8) & 0xff);
+    cmd_buf[3] = (uint8_t)((WrtieAddr >> 0) & 0xff);
 
     SPI_Flash_WaitNoBusy();
     SPI_Flash_WtritEnable();
