@@ -3854,117 +3854,64 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			ReceiveData = u1RxData[0];
 		}
 
-//		if (DataProcess == 0) {
-//			if (ReceiveData != 0x55) {
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//				return;
-//			}
-//			if (ReceiveData == 0x55) {
-//				DataProcess = 1;
-//
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//				return;
-//			}
-//		} else if (DataProcess == 1) {
-		ReceivePID = ReceiveData;
-		ReceiveID = ReceivePID & 0x3f;
+		if (DataProcess == 0) {
+			if (ReceiveData != 0x55) {
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			}
+			DataProcess = 1;
 
-		DEBUG_UART_RX_Count++;
-		DEBUG_ReceiveID = ReceiveID;
-		DEBUG_DataProcess = DataProcess;
+			LIN_RESET(&huart1);
+			HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+			return;
+		} else if (DataProcess == 1) {
+			ReceivePID = ReceiveData;
+			ReceiveID = ReceivePID & 0x3f;
 
-		if (ReceiveID == 0x22)  // ← 改成0x22
-				{
-			DEBUG_LIN_Send_Count++;
-			Lin_SendData(SWS_0x22_Data);
-			SWS_0x22_Flag = 0;
+			DEBUG_UART_RX_Count++;
+			DEBUG_ReceiveID = ReceiveID;
+			DEBUG_DataProcess = DataProcess;
+
+			if (ReceiveID == 0x22) {
+				DEBUG_LIN_Send_Count++;
+				Lin_SendData(SWS_0x22_Data);
+				SWS_0x22_Flag = 0;
+				DataProcess = 0;
+
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			} else {
+				DataReceiveflag = 1;
+				DataProcess = 2;
+
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			}
+		} else if (DataProcess == 2) {
+			if (DtRxProcess < 8) {
+				LinReceiveData[DtRxProcess] = ReceiveData;
+				DtRxProcess += 1;
+				if (DtRxProcess == 8) {
+					DtRxProcess = 0;
+					DataProcess = 3;
+
+					LIN_RESET(&huart1);
+					HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+					return;
+				}
+
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			}
+		} else if (DataProcess == 3) {
+			ReceiveCheckSum = ReceiveData;
+			FrameReceiveOverFlag = 1;
 			DataProcess = 0;
-
-			LIN_RESET(&huart1);
-			HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-			return;
-		} else {
-			DataReceiveflag = 1;
-			DataProcess = 2;
-
-			LIN_RESET(&huart1);
-			HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-			return;
 		}
-
-//		if(DataProcess == 0)
-//		{
-//			if(ReceiveData != 0x55)
-//			{
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
-//				return ;
-//			}
-//			if(ReceiveData == 0x55)
-//			{
-//				DataProcess = 1 ;
-//
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
-//				return ;
-//			}
-//		}
-////		111111111111111111111111111111111111111111111111111111111111111
-//		else if(DataProcess == 1)
-//		{
-//		    ReceivePID = ReceiveData;
-//		    ReceiveID = ReceivePID & 0x3f;
-//
-//		    DEBUG_UART_RX_Count++;
-//		    DEBUG_ReceiveID = ReceiveID;
-//		    DEBUG_DataProcess = DataProcess;
-//
-//		    if(ReceiveID == 0x22)  // ← 改成0x22
-//		    {
-//		        DEBUG_LIN_Send_Count++;
-//		        Lin_SendData(SWS_0x22_Data);
-//		        SWS_0x22_Flag = 0;
-//		        DataProcess = 0;
-//
-//		        LIN_RESET(&huart1);
-//		        HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//		        return;
-//		    }
-//		    else
-//		    {
-//		        DataReceiveflag = 1;
-//		        DataProcess = 2;
-//
-//		        LIN_RESET(&huart1);
-//		        HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//		        return;
-//		    }
-//		}
-//		else if(DataProcess == 2)
-//		{
-//			if(DtRxProcess<8)
-//			{
-//				LinReceiveData[DtRxProcess] = ReceiveData ;
-//				DtRxProcess += 1 ;
-//				if(DtRxProcess == 8)
-//				{
-//					DtRxProcess = 0 ;
-//					DataProcess = 3 ;
-//
-//					LIN_RESET(&huart1);
-//					HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
-//					return ;
-//				}
-//			}
-//		}
-//		else if(DataProcess == 3)
-//		{
-//			ReceiveCheckSum = ReceiveData ;
-//			FrameReceiveOverFlag = 1 ;
-//			DataProcess = 0 ;
-//		}
 
 	}
 	LIN_RESET(&huart1);
