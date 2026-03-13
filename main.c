@@ -344,8 +344,9 @@ struct Motor_Protection_TypeDef Motor_Protection;
 
 #define MOTOR_PROTECTION_ENABLED        1
 #define MAX_DIRECTION_CHANGES          3
-#define MAX_STUCK_COUNT               3
+#define MAX_STUCK_COUNT               8
 #define MAX_MOVEMENT_TIMEOUT         100
+#define MOVE_WAIT_TIMEOUT_MS        8000
 #define POSITION_TOLERANCE             5
 // ==================================
 
@@ -403,6 +404,8 @@ void MotoCtrl_PackSend12();
 void MotoCtrl_PackSend3();
 void MotoCtrl_PackSend4();
 void MotoCtrl_PositionLoop(int PositionX_mm, int PositionY_mm);
+bool WaitMotorToTargetWithProtection(uint32_t timeout_ms, uint16_t poll_ms,
+		bool trigger_emergency);
 //void CAN2Ser_Config(void);
 void Set_SystemReboot();
 void Clamp_Position(int *x, int *y, bool allow_reset);
@@ -3966,6 +3969,39 @@ uint32_t mRead_ADC1_ch(uint8_t ch) {
 	return mVoltage;
 }
 
+bool WaitMotorToTargetWithProtection(uint32_t timeout_ms, uint16_t poll_ms,
+		bool trigger_emergency) {
+	uint32_t start_tick = HAL_GetTick();
+
+	while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
+			|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
+		MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
+
+		if (Motor_Protection_Check(TA531_RC1.TA531_RC_X_act,
+				TA531_RC1.TA531_RC_Y_act, TA531_RC1.TA531_RC_X_trg,
+				TA531_RC1.TA531_RC_Y_trg) != 0) {
+			if (trigger_emergency) {
+				Motor_Protection_EmergencyStop();
+			}
+			return false;
+		}
+
+		if ((HAL_GetTick() - start_tick) > timeout_ms) {
+			Motor_Protection.protection_triggered = 1;
+			Motor_Protection.error_type = 3;
+			Motor_Protection.total_errors++;
+			if (trigger_emergency) {
+				Motor_Protection_EmergencyStop();
+			}
+			return false;
+		}
+
+		HAL_Delay(poll_ms);
+	}
+
+	return true;
+}
+
 void MoC_Init() {
 	////42 MotorCtrl init
 	SPI_Stop(Flash_SPI);
@@ -4495,11 +4531,11 @@ void MoC_Init() {
 		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;
 		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;
 		TA531_RC1_fg = 2;
-		while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
-				|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
-			MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
-					TA531_RC1.TA531_RC_Y_trg);
-			HAL_Delay(200);
+		Motor_Protection_Reset();
+		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
+		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+			return;
 		}
 
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Trg: (");
@@ -4519,11 +4555,11 @@ void MoC_Init() {
 		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX1_32b;
 		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY1_32b;
 		TA531_RC1_fg = 2;
-		while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
-				|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
-			MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
-					TA531_RC1.TA531_RC_Y_trg);
-			HAL_Delay(200);
+		Motor_Protection_Reset();
+		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
+		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+			return;
 		}
 
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Trg: (");
@@ -4543,11 +4579,11 @@ void MoC_Init() {
 		TA531_RC1_fg = 2;
 		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;  // 改为X0
 		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;  // 改为Y0
-		while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
-				|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
-			MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
-					TA531_RC1.TA531_RC_Y_trg);
-			HAL_Delay(200);
+		Motor_Protection_Reset();
+		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
+		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+			return;
 		}
 
 	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
@@ -5124,11 +5160,13 @@ void Motor_Protection_EmergencyStop(void) {
 	Sys_tune1();
 
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "Resetting...    ");
-	MotoCtrl_PositionLoop(0, 0);
-	HAL_Delay(2000);
-
 	TA531_RC1.TA531_RC_X_trg = 0;
 	TA531_RC1.TA531_RC_Y_trg = 0;
+	Motor_Protection_Reset();
+	Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
+	Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
+	(void) WaitMotorToTargetWithProtection(3000, 100, false);
+
 	TA531_RC1.TA531_RC_Reset = 0;
 	TA531_RC1.TA531_RC_Z_code = 0;
 	TA531_RC1.TA531_RC_X_Mov = 0;
