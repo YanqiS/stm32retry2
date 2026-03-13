@@ -165,6 +165,10 @@ uint8_t dateTimeBuffer[7];
 
 bool SW_UP, SW_UP_pre, SW_DW, SW_DW_pre, SW_LEFT, SW_LEFT_pre, SW_RIGHT,
 		SW_RIGHT_pre, SW_BUTTON, SW_BUTTON_pre;
+uint8_t SW_UP_cnt = 0;
+uint8_t SW_DW_cnt = 0;
+uint8_t SW_LEFT_cnt = 0;
+uint8_t SW_RIGHT_cnt = 0;
 
 //W25Q64 	sector		block		page
 //8M/64m	 256	x	 64		x	 256
@@ -226,8 +230,8 @@ uint16_t M4_ID = 0x0D5;        //D5,	Z
 uint8_t MotorInit_M1, MotorInit_M2, MotorInit_M3, MotorInit_M4;
 bool MotorERR_M1, MotorERR_M2, MotorERR_M3, MotorERR_M4;
 
-#define XmaxLimit 	500		//290
-#define YmaxLimit 	500		//435
+#define XmaxLimit 	600		//290
+#define YmaxLimit 	600		//435
 
 //#define RCtrl_Mode_0m1p		1
 
@@ -3482,36 +3486,55 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		SW_RIGHT_pre = SW_RIGHT;
 		SW_BUTTON_pre = SW_BUTTON;
 
-		if (HAL_GPIO_ReadPin(SW_UP_GPIO_Port, SW_UP_Pin) == 0) {
-			SW_UP = 1;
-//			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_UP     " );
-		} else {
-			SW_UP = 0;
-		}
-		if (HAL_GPIO_ReadPin(SW_DOWN_GPIO_Port, SW_DOWN_Pin) == 0) {
-			SW_DW = 1;
-//			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_DW     " );
-		} else {
-			SW_DW = 0;
-		}
-		if (HAL_GPIO_ReadPin(SW_LEFT_GPIO_Port, SW_LEFT_Pin) == 0) {
-			SW_LEFT = 1;
-//			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_LF     " );
-		} else {
-			SW_LEFT = 0;
-		}
-		if (HAL_GPIO_ReadPin(SW_RIGHT_GPIO_Port, SW_RIGHT_Pin) == 0) {
-			SW_RIGHT = 1;
-//			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_RT     " );
-		} else {
-			SW_RIGHT = 0;
-		}
-		if (HAL_GPIO_ReadPin(SW_BUTTON_GPIO_Port, SW_BUTTON_Pin) == 0) {
-			SW_BUTTON = 1;
-//			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_BT     " );
-		} else {
-			SW_BUTTON = 0;
-		}
+			if (HAL_GPIO_ReadPin(SW_UP_GPIO_Port, SW_UP_Pin) == 0) {
+				SW_UP = 1;
+				if (SW_UP_pre == 1) {
+					SW_UP_cnt++;
+				} else {
+					SW_UP_cnt = 0;
+				}
+			} else {
+				SW_UP = 0;
+				SW_UP_cnt = 0;
+			}
+			if (HAL_GPIO_ReadPin(SW_DOWN_GPIO_Port, SW_DOWN_Pin) == 0) {
+				SW_DW = 1;
+				if (SW_DW_pre == 1) {
+					SW_DW_cnt++;
+				} else {
+					SW_DW_cnt = 0;
+				}
+			} else {
+				SW_DW = 0;
+				SW_DW_cnt = 0;
+			}
+			if (HAL_GPIO_ReadPin(SW_LEFT_GPIO_Port, SW_LEFT_Pin) == 0) {
+				SW_LEFT = 1;
+				if (SW_LEFT_pre == 1) {
+					SW_LEFT_cnt++;
+				} else {
+					SW_LEFT_cnt = 0;
+				}
+			} else {
+				SW_LEFT = 0;
+				SW_LEFT_cnt = 0;
+			}
+			if (HAL_GPIO_ReadPin(SW_RIGHT_GPIO_Port, SW_RIGHT_Pin) == 0) {
+				SW_RIGHT = 1;
+				if (SW_RIGHT_pre == 1) {
+					SW_RIGHT_cnt++;
+				} else {
+					SW_RIGHT_cnt = 0;
+				}
+			} else {
+				SW_RIGHT = 0;
+				SW_RIGHT_cnt = 0;
+			}
+			if (HAL_GPIO_ReadPin(SW_BUTTON_GPIO_Port, SW_BUTTON_Pin) == 0) {
+				SW_BUTTON = 1;
+			} else {
+				SW_BUTTON = 0;
+			}
 
 		////Sys state
 
@@ -4256,78 +4279,85 @@ void MoC_Init() {
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "X1:");
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, "Y1:");
 
-				while (SW_BUTTON == 0)	//no push down
-				{
-					SW_UP_pre = SW_UP;
-					SW_DW_pre = SW_DW;
-					SW_LEFT_pre = SW_LEFT;
-					SW_RIGHT_pre = SW_RIGHT;
-					SW_BUTTON_pre = SW_BUTTON;
-
-					SW_UP = (HAL_GPIO_ReadPin(SW_UP_GPIO_Port, SW_UP_Pin) == 0);
-					SW_DW = (HAL_GPIO_ReadPin(SW_DOWN_GPIO_Port, SW_DOWN_Pin) == 0);
-					SW_LEFT = (HAL_GPIO_ReadPin(SW_LEFT_GPIO_Port, SW_LEFT_Pin) == 0);
-					SW_RIGHT = (HAL_GPIO_ReadPin(SW_RIGHT_GPIO_Port, SW_RIGHT_Pin) == 0);
-					SW_BUTTON = (HAL_GPIO_ReadPin(SW_BUTTON_GPIO_Port, SW_BUTTON_Pin) == 0);
-
-					if ((SW_UP == 1) & (SW_UP_pre == 1)) {
-						TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act
-								+ 10;
-
+				while (SW_BUTTON == 0) {
+					// UP键 - 渐进加速
+					if (SW_UP == 1) {
+						int step;
+						if (SW_UP_cnt == 0) {
+							step = 1;
+						} else if (SW_UP_cnt < 8) {
+							step = 5;
+						} else if (SW_UP_cnt < 15) {
+							step = 10;
+						} else {
+							step = 30;
+						}
+						TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act + step;
 						TA531_RC1_fg = 2;
-					} else if ((SW_UP == 1) & (SW_UP_pre == 0)) {
-						TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act + 2;
+					}
 
-						TA531_RC1_fg = 2;
-					} else if ((SW_DW == 1) & (SW_DW_pre == 1)) {
-						TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act
-								- 10;
-
+					// DOWN键 - 渐进加速
+					else if (SW_DW == 1) {
+						int step;
+						if (SW_DW_cnt == 0) {
+							step = 1;
+						} else if (SW_DW_cnt < 8) {
+							step = 5;
+						} else if (SW_DW_cnt < 15) {
+							step = 10;
+						} else {
+							step = 30;
+						}
+						TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act - step;
 						if (TA531_RC1.TA531_RC_X_trg < 0) {
 							TA531_RC1.TA531_RC_X_trg = 0;
 						}
 						TA531_RC1_fg = 2;
-					} else if ((SW_DW == 1) & (SW_DW_pre == 0)) {
-						TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act - 2;
+					}
 
-						if (TA531_RC1.TA531_RC_X_trg < 0) {
-							TA531_RC1.TA531_RC_X_trg = 0;
+					// LEFT键 - 渐进加速
+					else if (SW_LEFT == 1) {
+						int step;
+						if (SW_LEFT_cnt == 0) {
+							step = 1;
+						} else if (SW_LEFT_cnt < 8) {
+							step = 5;
+						} else if (SW_LEFT_cnt < 15) {
+							step = 10;
+						} else {
+							step = 30;
 						}
-						TA531_RC1_fg = 2;
-					} else if ((SW_LEFT == 1) & (SW_LEFT_pre == 0)) {
-						TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act - 2;
-
+						TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act - step;
 						if (TA531_RC1.TA531_RC_Y_trg < 0) {
 							TA531_RC1.TA531_RC_Y_trg = 0;
 						}
 						TA531_RC1_fg = 2;
-					} else if ((SW_LEFT == 1) & (SW_LEFT_pre == 1)) {
-						TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act
-								- 10;
+					}
 
-						if (TA531_RC1.TA531_RC_Y_trg < 0) {
-							TA531_RC1.TA531_RC_Y_trg = 0;
+					// RIGHT键 - 渐进加速
+					else if (SW_RIGHT == 1) {
+						int step;
+						if (SW_RIGHT_cnt == 0) {
+							step = 1;
+						} else if (SW_RIGHT_cnt < 8) {
+							step = 5;
+						} else if (SW_RIGHT_cnt < 15) {
+							step = 10;
+						} else {
+							step = 30;
 						}
-						TA531_RC1_fg = 2;
-					} else if ((SW_RIGHT == 1) & (SW_RIGHT_pre == 0)) {
-						TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act + 2;
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_RIGHT == 1) & (SW_RIGHT_pre == 1)) {
-						TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act
-								+ 10;
-
+						TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act + step;
 						TA531_RC1_fg = 2;
 					}
 
 					MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
 							TA531_RC1.TA531_RC_Y_trg);
-					HAL_Delay(300);
+					HAL_Delay(50);
 
 					itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 3, str1);
+					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
 					itoa(TA531_RC1.TA531_RC_Y_trg, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 3, str1);
+					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
 				}
 
 				////push down
@@ -4595,10 +4625,9 @@ void MotoCtrl_PackSend12() {
 	MotrCtrl_2_DATA[7] = MotorCtrl_M2.MotorCtrl_ByteData;
 
 	HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &MotrCtrl_2_TxHeader,
-			MotrCtrl_2_DATA);
-	HAL_Delay(10);
+				MotrCtrl_2_DATA);
 	HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &MotrCtrl_1_TxHeader,
-			MotrCtrl_1_DATA);
+				MotrCtrl_1_DATA);
 	HAL_Delay(20);
 }
 
