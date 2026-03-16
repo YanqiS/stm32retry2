@@ -3722,40 +3722,28 @@ uint8_t Lin_CheckPID(uint8_t id) {
 	return returnpid;
 }
 
-// 是经典校验还是增强校验，另：诊断帧只能经典校�??????????????????????????????????????????????????
+// LIN 2.x: 诊断帧(0x3C/0x3D)使用classic checksum，其它使用enhanced checksum
 uint8_t Lin_Checksum(uint8_t id, uint8_t *data) {
 	uint8_t t;
-	uint16_t sum;
+	uint16_t sum = 0;
+	bool is_diag_frame = (id == 0x3C) || (id == 0x3D);
 
-	sum = data[0];
-	if (id == 0x3c)			// 如果是诊断帧，用经典校验
-			{
-		for (t = 1; t < 8; t++) {
-			sum += data[t];
-			if (sum & 0xff00) {
-				sum &= 0x00ff;
-				sum += 1;
-			}
-		}
-		sum = ~sum;
-		data[8] = sum;
-		//	return (uint8_t)sum ;
-	}
-
-	for (t = 1; t < 8; t++) {
+	for (t = 0; t < 8; t++) {
 		sum += data[t];
 		if (sum & 0xff00) {
-			sum &= 0x00ff;
-			sum += 1;
+			sum = (sum & 0x00ff) + 1;
 		}
 	}
-	sum += Lin_CheckPID(id);
-	if (sum & 0xff00) {
-		sum &= 0x00ff;
-		sum += 1;
+
+	if (!is_diag_frame) {
+		sum += Lin_CheckPID(id);
+		if (sum & 0xff00) {
+			sum = (sum & 0x00ff) + 1;
+		}
 	}
+
 	sum = ~sum;
-	data[8] = sum;
+	data[8] = (uint8_t) sum;
 	return (uint8_t) sum;
 }
 
