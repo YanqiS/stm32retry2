@@ -210,8 +210,10 @@ uint8_t DEBUG_LIN_Checksum = 0;
 
 uint8_t DEBUG_UART_RX_Count = 0;      // UART接收计数
 uint8_t DEBUG_ReceiveID = 0;          // 收到的ID
+uint8_t DEBUG_ReceivePID = 0;         // 最近收到的PID字节
 uint8_t DEBUG_LIN_Send_Count = 0;     // LIN发送计数
 uint8_t DEBUG_DataProcess = 0;        // DataProcess状态
+uint8_t DEBUG_CAN_104_Count = 0;      // 收到0x104的计数
 
 //////// ////////app level
 
@@ -1220,69 +1222,45 @@ int main(void) {
 
 		//	HAL_Delay(20);
 
-		if (id1 == 0)	//id1 = 0, no RC
-				{
-//		    // ===== 添加第0行：CAN/LIN调试信息 =====
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "C:");
-//		    itoa(DEBUG_CAN_Up, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 0, str1);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 0, "/");
-//		    itoa(DEBUG_CAN_Down, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 0, "L:");
-//		    sprintf(str1, "%02X", DEBUG_LIN_Byte1);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, "S:");
-//		    sprintf(str1, "%02X", DEBUG_LIN_Checksum);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
-//		    // ========================================
-//
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "RX:");
-//		    itoa(DEBUG_UART_RX_Count, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 1, "ID:");
-//		    sprintf(str1, "%02X", DEBUG_ReceiveID);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, "TX:");
-//		    itoa(DEBUG_LIN_Send_Count, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "PID:");
-//		    sprintf(str1, "%02X", u1RxData[0]);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, "St:");
-//		    itoa(DEBUG_DataProcess, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
+			if (id1 == 0)	//id1 = 0, no RC，优先显示104->LIN调试信息
+					{
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "104:");
+				itoa(DEBUG_CAN_104_Count, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 7, 0, "U/D:");
+				itoa(DEBUG_CAN_Up, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 0, "/");
+				itoa(DEBUG_CAN_Down, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
 
-			itoa(TA531SysEnv.TA531_env_LightA1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "RID:");
+				sprintf(str1, "%02X", DEBUG_ReceiveID);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 1, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 7, 1, "PID:");
+				sprintf(str1, "%02X", DEBUG_ReceivePID);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 1, str1);
 
-			itoa(TA531SysEnv.TA531_env_LightD1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "TX:");
+				itoa(DEBUG_LIN_Send_Count, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 7, 2, "B1:");
+				sprintf(str1, "%02X", DEBUG_LIN_Byte1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 2, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 2, "C");
+				itoa(DEBUG_CAN_RX_Flag, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 14, 2, str1);
 
-			itoa(TA531SysEnv.TA531_env_ADC1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, str1);
-			itoa(TA531SysEnv.TA531_env_ADC2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, str1);
-		}
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "St:");
+				itoa(DEBUG_DataProcess, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 3, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 3, "Rm:");
+				itoa(Remote_state, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 3, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 3, "L:");
+				itoa(lvLED_Sts_LIN, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 14, 3, str1);
+			}
 
 		if (TSA3_0x52_Flag == 1) {
 			if (TA531SysEnv.TA531_env_KL15 == 1) {
@@ -3229,6 +3207,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					DEBUG_CAN_Up = TA531_LIN_SWS_G3.SWSSelUpSwAL_l;
 					DEBUG_CAN_Down = TA531_LIN_SWS_G3.SWSSelDwnSwAL_l;
 					DEBUG_CAN_RX_Flag = 1;  // 标记收到新数据
+					DEBUG_CAN_104_Count++;
 
 					TA531_LIN_SWS_G3.SWSSelLSwAL_l = (buf_rec[2] >> 0) & 0x03;
 					TA531_LIN_SWS_G3.SWSSelRSwAL_l = (buf_rec[2] >> 2) & 0x03;
@@ -3845,10 +3824,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 //				return;
 //			}
 //		} else if (DataProcess == 1) {
-		ReceivePID = ReceiveData;
-		ReceiveID = ReceivePID & 0x3f;
+			ReceivePID = ReceiveData;
+			ReceiveID = ReceivePID & 0x3f;
+			DEBUG_ReceivePID = ReceivePID;
 
-		DEBUG_UART_RX_Count++;
+			DEBUG_UART_RX_Count++;
 		DEBUG_ReceiveID = ReceiveID;
 		DEBUG_DataProcess = DataProcess;
 
