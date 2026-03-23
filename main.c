@@ -214,6 +214,7 @@ uint8_t DEBUG_ReceivePID = 0;         // 最近收到的PID字节
 uint8_t DEBUG_LIN_Send_Count = 0;     // LIN发送计数
 uint8_t DEBUG_DataProcess = 0;        // DataProcess状态
 uint8_t DEBUG_CAN_104_Count = 0;      // 收到0x104的计数
+uint16_t DEBUG_RID22_Count = 0;       // 识别到RID 0x22的累计次数
 
 //////// ////////app level
 
@@ -1244,11 +1245,11 @@ int main(void) {
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "TX:");
 				itoa(DEBUG_LIN_Send_Count, str1, 10);
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 7, 2, "B1:");
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, "22:");
+				itoa(DEBUG_RID22_Count, str1, 10);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 2, str1);
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, "B1:");
 				sprintf(str1, "%02X", DEBUG_LIN_Byte1);
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 2, str1);
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 2, "C");
-				itoa(DEBUG_CAN_RX_Flag, str1, 10);
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 14, 2, str1);
 
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "St:");
@@ -3831,8 +3832,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			DEBUG_UART_RX_Count++;
 		DEBUG_ReceiveID = ReceiveID;
 		DEBUG_DataProcess = DataProcess;
+		if (ReceiveID == 0x22) {
+			DEBUG_RID22_Count++;
+		}
 
-		if (ReceiveID == 0x22)  // ← 改成0x22
+			if (ReceiveID == 0x22)  // ← 改成0x22
 				{
 			DEBUG_LIN_Send_Count++;
 			Lin_SendData(SWS_0x22_Data);
