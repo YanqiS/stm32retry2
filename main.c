@@ -211,11 +211,8 @@ uint8_t DEBUG_LIN_Checksum = 0;
 
 uint8_t DEBUG_UART_RX_Count = 0;      // UART接收计数
 uint8_t DEBUG_ReceiveID = 0;          // 收到的ID
-uint8_t DEBUG_ReceivePID = 0;         // 最近收到的PID字节
 uint8_t DEBUG_LIN_Send_Count = 0;     // LIN发送计数
 uint8_t DEBUG_DataProcess = 0;        // DataProcess状态
-uint8_t DEBUG_CAN_104_Count = 0;      // 收到0x104的计数
-uint16_t DEBUG_RID22_Count = 0;       // 识别到RID 0x22的累计次数
 
 //////// ////////app level
 
@@ -381,7 +378,6 @@ void UART_Init(UART_HandleTypeDef *huart, uint32_t data_length);
 void LIN_RESET(UART_HandleTypeDef *huart);
 uint8_t Lin_CheckPID(uint8_t id);
 uint8_t Lin_Checksum(uint8_t id, uint8_t data[]);
-uint8_t Calc_SWS_G3_CRC8(const uint8_t *data, uint8_t len);
 void Lin_SendData(uint8_t *data);
 void Lin_DataProcess_loop(void);
 
@@ -1225,36 +1221,69 @@ int main(void) {
 
 		//	HAL_Delay(20);
 
-				if (id1 == 0)	//id1 = 0, no RC，优先显示104->LIN调试信息
-						{
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "104:");
-					itoa(DEBUG_CAN_104_Count, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, "22:");
-					itoa(DEBUG_RID22_Count, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, str1);
+		if (id1 == 0)	//id1 = 0, no RC
+				{
+//		    // ===== 添加第0行：CAN/LIN调试信息 =====
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "C:");
+//		    itoa(DEBUG_CAN_Up, str1, 10);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 0, str1);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 0, "/");
+//		    itoa(DEBUG_CAN_Down, str1, 10);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 0, "L:");
+//		    sprintf(str1, "%02X", DEBUG_LIN_Byte1);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, str1);
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, "S:");
+//		    sprintf(str1, "%02X", DEBUG_LIN_Checksum);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
+//		    // ========================================
+//
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "RX:");
+//		    itoa(DEBUG_UART_RX_Count, str1, 10);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 1, str1);
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 1, "ID:");
+//		    sprintf(str1, "%02X", DEBUG_ReceiveID);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 1, str1);
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, "TX:");
+//		    itoa(DEBUG_LIN_Send_Count, str1, 10);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 1, str1);
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "PID:");
+//		    sprintf(str1, "%02X", u1RxData[0]);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
+//
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, "St:");
+//		    itoa(DEBUG_DataProcess, str1, 10);
+//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
 
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "RID:");
-					sprintf(str1, "%02X", DEBUG_ReceiveID);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 1, str1);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 7, 1, "PID:");
-					sprintf(str1, "%02X", DEBUG_ReceivePID);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 1, str1);
+			itoa(TA531SysEnv.TA531_env_LightA1, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, str1);
+			itoa(TA531SysEnv.TA531_env_LightA2, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 1, str1);
+			itoa(TA531SysEnv.TA531_env_LightA3, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 1, str1);
+			itoa(TA531SysEnv.TA531_env_LightA4, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, str1);
 
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "B0:");
-					sprintf(str1, "%02X", SWS_0x22_Data[0]);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, "B1:");
-					sprintf(str1, "%02X", SWS_0x22_Data[1]);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
+			itoa(TA531SysEnv.TA531_env_LightD1, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, str1);
+			itoa(TA531SysEnv.TA531_env_LightD2, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
+			itoa(TA531SysEnv.TA531_env_LightD3, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, str1);
+			itoa(TA531SysEnv.TA531_env_LightD4, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
 
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "B7:");
-					sprintf(str1, "%02X", SWS_0x22_Data[7]);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 3, str1);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, "TX:");
-					itoa(DEBUG_LIN_Send_Count, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 3, str1);
-					}
+			itoa(TA531SysEnv.TA531_env_ADC1, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, str1);
+			itoa(TA531SysEnv.TA531_env_ADC2, str1, 10);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, str1);
+		}
 
 		if (TSA3_0x52_Flag == 1) {
 			if (TA531SysEnv.TA531_env_KL15 == 1) {
@@ -3190,18 +3219,17 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					TSA_Ack_DATA[5] = 1;
 					TSA4_0x103_Flag = 1;
 					lvLED_Sts_LIN = 2;
-					} else if ((FDCAN1_RxHeader.Identifier == 0x104) && LINProfile_IP5PM_H)	//TSA_LIN_SWS G3.0
-							{
-						// 解析CAN数据
-	
-						TA531_LIN_SWS_G3.CCSwStsAlvRC_l = (buf_rec[1] >> 0) & 0x0f;
-						TA531_LIN_SWS_G3.SWSSelUpSwAL_l = (buf_rec[1] >> 4) & 0x03;
-						TA531_LIN_SWS_G3.SWSSelDwnSwAL_l = (buf_rec[1] >> 6) & 0x03;
+				} else if ((FDCAN1_RxHeader.Identifier == 0x104) && LINProfile_IP5PM_H)	//TSA_LIN_SWS G3.0
+						{
+					// 解析CAN数据
+
+					TA531_LIN_SWS_G3.CCSwStsAlvRC_l = (buf_rec[1] >> 0) & 0x0f;
+					TA531_LIN_SWS_G3.SWSSelUpSwAL_l = (buf_rec[1] >> 4) & 0x03;
+					TA531_LIN_SWS_G3.SWSSelDwnSwAL_l = (buf_rec[1] >> 6) & 0x03;
 
 					DEBUG_CAN_Up = TA531_LIN_SWS_G3.SWSSelUpSwAL_l;
 					DEBUG_CAN_Down = TA531_LIN_SWS_G3.SWSSelDwnSwAL_l;
 					DEBUG_CAN_RX_Flag = 1;  // 标记收到新数据
-					DEBUG_CAN_104_Count++;
 
 					TA531_LIN_SWS_G3.SWSSelLSwAL_l = (buf_rec[2] >> 0) & 0x03;
 					TA531_LIN_SWS_G3.SWSSelRSwAL_l = (buf_rec[2] >> 2) & 0x03;
@@ -3706,23 +3734,6 @@ uint8_t Lin_Checksum(uint8_t id, uint8_t *data) {
 	return (uint8_t) sum;
 }
 
-uint8_t Calc_SWS_G3_CRC8(const uint8_t *data, uint8_t len) {
-	uint8_t crc = 0x00;
-
-	for (uint8_t i = 0; i < len; i++) {
-		crc ^= data[i];
-		for (uint8_t bit = 0; bit < 8; bit++) {
-			if (crc & 0x80) {
-				crc = (uint8_t) ((crc << 1) ^ 0x1D);
-			} else {
-				crc <<= 1;
-			}
-		}
-	}
-
-	return crc;
-}
-
 void Lin_SendData(uint8_t *data) {
 	Lin_Checksum(ReceiveID, data);
 
@@ -3733,7 +3744,11 @@ void Lin_SendData(uint8_t *data) {
 
 void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,seems no use
 {
-#if LINProfile_IP5PM_H
+	#if LINProfile_IP5PM_H
+	static uint8_t counter = 0;
+
+	SWS_0x22_Data[0] = counter;
+	counter++;
 	SWS_0x22_Data[1] = ((TA531_LIN_SWS_G3.CCSwStsAlvRC_l & 0x0f) << 0)
 			+ ((TA531_LIN_SWS_G3.SWSSelUpSwAL_l & 0x03) << 4)
 			+ ((TA531_LIN_SWS_G3.SWSSelDwnSwAL_l & 0x03) << 6);
@@ -3768,16 +3783,14 @@ void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,s
 			+ ((TA531_LIN_SWS_G3.SWSPB2SwStuckL_l & 0x01) << 6)
 			+ ((TA531_LIN_SWS_G3.SWSPB3SwStuckL_l & 0x01) << 7);
 
-	SWS_0x22_Data[7] = ((TA531_LIN_SWS_G3.StrgWhlEntrtnSwDataIntgty_l & 0x01) << 0)
-			+ ((TA531_LIN_SWS_G3.StrgWhlDrvngMdSwA_l & 0x01) << 1)
+	SWS_0x22_Data[7] = ((TA531_LIN_SWS_G3.StrgWhlEntrtnSwDataIntgty_l & 0x01)
+			<< 0) + ((TA531_LIN_SWS_G3.StrgWhlDrvngMdSwA_l & 0x01) << 1)
 			+ ((TA531_LIN_SWS_G3.StrgWhlDrvngMdSwDataIntgty_l & 0x01) << 2)
 			+ ((TA531_LIN_SWS_G3.StrgWhlTipcSwDataIntgty_l & 0x01) << 3)
 			+ ((TA531_LIN_SWS_G3.PadSSelLSwStuck_l & 0x01) << 4)
 			+ ((TA531_LIN_SWS_G3.PadSSelRSwStuck_l & 0x01) << 5)
 			+ ((TA531_LIN_SWS_G3.RespErSWSF_l & 0x01) << 6);
-
-	SWS_0x22_Data[0] = Calc_SWS_G3_CRC8(&SWS_0x22_Data[1], 7);
-#else
+	#else
 	SWS_0x00_Data[0] = 0;
 	SWS_0x00_Data[5] = 0;
 	SWS_0x00_Data[6] = 0;
@@ -3787,8 +3800,8 @@ void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,s
 			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsCCASwA_1 & 0x01) << 5)
 			+ ((TA531_LIN_SWS.LIN_SWS_PfTrTapUpDwnSecySwSta_2 & 0x03) << 6);
 
-	SWS_0x00_Data[2] = ((TA531_LIN_SWS.LIN_SWS_CCSwStsSwDataIntgty_2 & 0x03) << 0)
-			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsSpdDecSwA_1 & 0x01) << 2)
+	SWS_0x00_Data[2] = ((TA531_LIN_SWS.LIN_SWS_CCSwStsSwDataIntgty_2 & 0x03)
+			<< 0) + ((TA531_LIN_SWS.LIN_SWS_CCSwStsSpdDecSwA_1 & 0x01) << 2)
 			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsSetSwA_1 & 0x01) << 3)
 			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsRsmSwA_1 & 0x01) << 4)
 			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsOnSwA_1 & 0x01) << 5)
@@ -3815,8 +3828,9 @@ void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,s
 
 	SWS_0x00_Data[7] = ((TA531_LIN_SWS.LIN_SWS_SWSLFnChngSwA_1 & 0x01) << 0)
 			+ ((TA531_LIN_SWS.LIN_SWS_050ms_PDU00_Reserve03_7 & 0x7f) << 1);
-#endif
+	#endif
 
+	//// ========== 处理接收到的LIN数据 ==========
 	uint8_t PIDChecksum;
 	uint8_t SumCheck;
 
@@ -3869,14 +3883,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		} else if (DataProcess == 1) {
 			ReceivePID = ReceiveData;
 			ReceiveID = ReceivePID & 0x3f;
-			DEBUG_ReceivePID = ReceivePID;
+
 			DEBUG_UART_RX_Count++;
 			DEBUG_ReceiveID = ReceiveID;
 			DEBUG_DataProcess = DataProcess;
 
-#if LINProfile_IP5PM_H
+	#if LINProfile_IP5PM_H
 			if (ReceiveID == 0x22) {
-				DEBUG_RID22_Count++;
 				DEBUG_LIN_Send_Count++;
 				Lin_SendData(SWS_0x22_Data);
 				SWS_0x22_Flag = 0;
@@ -3886,7 +3899,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
 				return;
 			}
-#else
+	#else
 			if (ReceiveID == 0x00) {
 				TA531_LIN_SWS.LIN_SWS_050ms_PDU00_RC_4++;
 				if (TA531_LIN_SWS.LIN_SWS_050ms_PDU00_RC_4 > 15) {
@@ -3908,7 +3921,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
 				return;
 			}
-#endif
+	#endif
 
 			DataReceiveflag = 1;
 			DataProcess = 2;
@@ -3934,15 +3947,82 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			FrameReceiveOverFlag = 1;
 			DataProcess = 0;
 		}
+
+//		if(DataProcess == 0)
+//		{
+//			if(ReceiveData != 0x55)
+//			{
+//				LIN_RESET(&huart1);
+//				HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
+//				return ;
+//			}
+//			if(ReceiveData == 0x55)
+//			{
+//				DataProcess = 1 ;
+//
+//				LIN_RESET(&huart1);
+//				HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
+//				return ;
+//			}
+//		}
+////		111111111111111111111111111111111111111111111111111111111111111
+//		else if(DataProcess == 1)
+//		{
+//		    ReceivePID = ReceiveData;
+//		    ReceiveID = ReceivePID & 0x3f;
+//
+//		    DEBUG_UART_RX_Count++;
+//		    DEBUG_ReceiveID = ReceiveID;
+//		    DEBUG_DataProcess = DataProcess;
+//
+//		    if(ReceiveID == 0x22)  // ← 改成0x22
+//		    {
+//		        DEBUG_LIN_Send_Count++;
+//		        Lin_SendData(SWS_0x22_Data);
+//		        SWS_0x22_Flag = 0;
+//		        DataProcess = 0;
+//
+//		        LIN_RESET(&huart1);
+//		        HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+//		        return;
+//		    }
+//		    else
+//		    {
+//		        DataReceiveflag = 1;
+//		        DataProcess = 2;
+//
+//		        LIN_RESET(&huart1);
+//		        HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+//		        return;
+//		    }
+//		}
+//		else if(DataProcess == 2)
+//		{
+//			if(DtRxProcess<8)
+//			{
+//				LinReceiveData[DtRxProcess] = ReceiveData ;
+//				DtRxProcess += 1 ;
+//				if(DtRxProcess == 8)
+//				{
+//					DtRxProcess = 0 ;
+//					DataProcess = 3 ;
+//
+//					LIN_RESET(&huart1);
+//					HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
+//					return ;
+//				}
+//			}
+//		}
+//		else if(DataProcess == 3)
+//		{
+//			ReceiveCheckSum = ReceiveData ;
+//			FrameReceiveOverFlag = 1 ;
+//			DataProcess = 0 ;
+//		}
+
 	}
 	LIN_RESET(&huart1);
 	HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-
-//	LIN_RESET(&huart2);
-//	HAL_UART_Receive_IT(&huart2,u2RxData, LIN_Data_LENGTH );
-//
-//	LIN_RESET(&huart3);
-//	HAL_UART_Receive_IT(&huart3,u3RxData, LIN_Data_LENGTH );
 }
 
 void UART_Init(UART_HandleTypeDef *handle, uint32_t data_length) {
