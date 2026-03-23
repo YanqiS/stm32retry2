@@ -380,6 +380,7 @@ void UART_Init(UART_HandleTypeDef *huart, uint32_t data_length);
 void LIN_RESET(UART_HandleTypeDef *huart);
 uint8_t Lin_CheckPID(uint8_t id);
 uint8_t Lin_Checksum(uint8_t id, uint8_t data[]);
+uint8_t Calc_SWS_G3_CRC8(const uint8_t *data, uint8_t len);
 void Lin_SendData(uint8_t *data);
 void Lin_DataProcess_loop(void);
 
@@ -3192,7 +3193,6 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 							{
 						// 解析CAN数据
 	
-						TA531_LIN_SWS_G3.CCSwStsChksm = buf_rec[0];
 						TA531_LIN_SWS_G3.CCSwStsAlvRC_l = (buf_rec[1] >> 0) & 0x0f;
 						TA531_LIN_SWS_G3.SWSSelUpSwAL_l = (buf_rec[1] >> 4) & 0x03;
 						TA531_LIN_SWS_G3.SWSSelDwnSwAL_l = (buf_rec[1] >> 6) & 0x03;
@@ -3705,6 +3705,23 @@ uint8_t Lin_Checksum(uint8_t id, uint8_t *data) {
 	return (uint8_t) sum;
 }
 
+uint8_t Calc_SWS_G3_CRC8(const uint8_t *data, uint8_t len) {
+	uint8_t crc = 0x00;
+
+	for (uint8_t i = 0; i < len; i++) {
+		crc ^= data[i];
+		for (uint8_t bit = 0; bit < 8; bit++) {
+			if (crc & 0x80) {
+				crc = (uint8_t) ((crc << 1) ^ 0x1D);
+			} else {
+				crc <<= 1;
+			}
+		}
+	}
+
+	return crc;
+}
+
 void Lin_SendData(uint8_t *data) {
 	Lin_Checksum(ReceiveID, data);
 
@@ -3716,8 +3733,6 @@ void Lin_SendData(uint8_t *data) {
 void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,seems no use
 {
 	//// ========== 直接打包 SWS_0x22_Data，无条件执行（像main1_1.c一样）==========
-	SWS_0x22_Data[0] = TA531_LIN_SWS_G3.CCSwStsChksm;
-
 	SWS_0x22_Data[1] = ((TA531_LIN_SWS_G3.CCSwStsAlvRC_l & 0x0f) << 0)
 			+ ((TA531_LIN_SWS_G3.SWSSelUpSwAL_l & 0x03) << 4)
 			+ ((TA531_LIN_SWS_G3.SWSSelDwnSwAL_l & 0x03) << 6);
@@ -3759,6 +3774,8 @@ void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,s
 			+ ((TA531_LIN_SWS_G3.PadSSelLSwStuck_l & 0x01) << 4)
 			+ ((TA531_LIN_SWS_G3.PadSSelRSwStuck_l & 0x01) << 5)
 			+ ((TA531_LIN_SWS_G3.RespErSWSF_l & 0x01) << 6);
+
+	SWS_0x22_Data[0] = Calc_SWS_G3_CRC8(&SWS_0x22_Data[1], 7);
 
 	//// ========== 处理接收到的LIN数据 ==========
 	uint8_t PIDChecksum;
