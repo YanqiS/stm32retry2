@@ -73,7 +73,8 @@ SPI_HandleTypeDef *TFT_SPI;
 UART_HandleTypeDef *Serial_Num;
 
 #define LINProfile_AH4EM		0
-#define LINProfile_IP5PM		1
+#define LINProfile_IP5PM_L		0
+#define LINProfile_IP5PM_H		1
 #define LINProfile_ZS32			0
 
 #define PWM_ag0			550
@@ -3116,7 +3117,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 
 					TSA_Ack_DATA[4] = 1;
 					TSA4_0x54_Flag = 1;
-				} else if (FDCAN1_RxHeader.Identifier == 0x103)	//TSA_LIN_SWS G2.5
+				} else if ((FDCAN1_RxHeader.Identifier == 0x103) && LINProfile_IP5PM_L)	//TSA_LIN_SWS G2.5
 						{
 					TA531_LIN_SWS.LIN_SWS2_ErrRespSWS_1 = (buf_rec[0] >> 0)
 							& 0x01;
@@ -3189,7 +3190,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					TSA_Ack_DATA[5] = 1;
 					TSA4_0x103_Flag = 1;
 					lvLED_Sts_LIN = 2;
-					} else if (FDCAN1_RxHeader.Identifier == 0x104)	//TSA_LIN_SWS G3.0
+					} else if ((FDCAN1_RxHeader.Identifier == 0x104) && LINProfile_IP5PM_H)	//TSA_LIN_SWS G3.0
 							{
 						// 解析CAN数据
 	
@@ -3732,7 +3733,7 @@ void Lin_SendData(uint8_t *data) {
 
 void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,seems no use
 {
-	//// ========== 直接打包 SWS_0x22_Data，无条件执行（像main1_1.c一样）==========
+#if LINProfile_IP5PM_H
 	SWS_0x22_Data[1] = ((TA531_LIN_SWS_G3.CCSwStsAlvRC_l & 0x0f) << 0)
 			+ ((TA531_LIN_SWS_G3.SWSSelUpSwAL_l & 0x03) << 4)
 			+ ((TA531_LIN_SWS_G3.SWSSelDwnSwAL_l & 0x03) << 6);
@@ -3767,8 +3768,8 @@ void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,s
 			+ ((TA531_LIN_SWS_G3.SWSPB2SwStuckL_l & 0x01) << 6)
 			+ ((TA531_LIN_SWS_G3.SWSPB3SwStuckL_l & 0x01) << 7);
 
-	SWS_0x22_Data[7] = ((TA531_LIN_SWS_G3.StrgWhlEntrtnSwDataIntgty_l & 0x01)
-			<< 0) + ((TA531_LIN_SWS_G3.StrgWhlDrvngMdSwA_l & 0x01) << 1)
+	SWS_0x22_Data[7] = ((TA531_LIN_SWS_G3.StrgWhlEntrtnSwDataIntgty_l & 0x01) << 0)
+			+ ((TA531_LIN_SWS_G3.StrgWhlDrvngMdSwA_l & 0x01) << 1)
 			+ ((TA531_LIN_SWS_G3.StrgWhlDrvngMdSwDataIntgty_l & 0x01) << 2)
 			+ ((TA531_LIN_SWS_G3.StrgWhlTipcSwDataIntgty_l & 0x01) << 3)
 			+ ((TA531_LIN_SWS_G3.PadSSelLSwStuck_l & 0x01) << 4)
@@ -3776,8 +3777,46 @@ void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,s
 			+ ((TA531_LIN_SWS_G3.RespErSWSF_l & 0x01) << 6);
 
 	SWS_0x22_Data[0] = Calc_SWS_G3_CRC8(&SWS_0x22_Data[1], 7);
+#else
+	SWS_0x00_Data[0] = 0;
+	SWS_0x00_Data[5] = 0;
+	SWS_0x00_Data[6] = 0;
 
-	//// ========== 处理接收到的LIN数据 ==========
+	SWS_0x00_Data[1] = ((TA531_LIN_SWS.LIN_SWS_050ms_PDU00_RC_4 & 0x0f) << 0)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsDistIncSwA_1 & 0x01) << 4)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsCCASwA_1 & 0x01) << 5)
+			+ ((TA531_LIN_SWS.LIN_SWS_PfTrTapUpDwnSecySwSta_2 & 0x03) << 6);
+
+	SWS_0x00_Data[2] = ((TA531_LIN_SWS.LIN_SWS_CCSwStsSwDataIntgty_2 & 0x03) << 0)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsSpdDecSwA_1 & 0x01) << 2)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsSetSwA_1 & 0x01) << 3)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsRsmSwA_1 & 0x01) << 4)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsOnSwA_1 & 0x01) << 5)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsDistDecSwA_1 & 0x01) << 6)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsCanclSwA_1 & 0x01) << 7);
+
+	SWS_0x00_Data[3] = ((TA531_LIN_SWS.LIN_SWS_SWSFastrUserSwA_1 & 0x01) << 0)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSEntrtnUserSwA_1 & 0x01) << 1)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSCnfmSwA_1 & 0x01) << 2)
+			+ ((TA531_LIN_SWS.LIN_SWS_StrgWhlTipcSwDataIntgty_1 & 0x01) << 3)
+			+ ((TA531_LIN_SWS.LIN_SWS_StrgWhlEntrtnSwDtIntgty_1 & 0x01) << 4)
+			+ ((TA531_LIN_SWS.LIN_SWS_StrgWhlDrMdSwDtIntgty_1 & 0x01) << 5)
+			+ ((TA531_LIN_SWS.LIN_SWS_StrgWhlDrvngMdSwA_1 & 0x01) << 6)
+			+ ((TA531_LIN_SWS.LIN_SWS_CCSwStsSpdIncSwA_1 & 0x01) << 7);
+
+	SWS_0x00_Data[4] = ((TA531_LIN_SWS.LIN_SWS_SWSFnChngSwA_1 & 0x01) << 0)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSSelDwnSwA_1 & 0x01) << 1)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSSelLSwA_1 & 0x01) << 2)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSSelRSwA_1 & 0x01) << 3)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSSelUpSwA_1 & 0x01) << 4)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSSocContSwA_1 & 0x01) << 5)
+			+ ((TA531_LIN_SWS.LIN_SWS_SWSVcSwA_1 & 0x01) << 6)
+			+ ((TA531_LIN_SWS.LIN_SWS_050ms_PDU00_Reserve01_1 & 0x01) << 7);
+
+	SWS_0x00_Data[7] = ((TA531_LIN_SWS.LIN_SWS_SWSLFnChngSwA_1 & 0x01) << 0)
+			+ ((TA531_LIN_SWS.LIN_SWS_050ms_PDU00_Reserve03_7 & 0x7f) << 1);
+#endif
+
 	uint8_t PIDChecksum;
 	uint8_t SumCheck;
 
@@ -3816,125 +3855,94 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			ReceiveData = u1RxData[0];
 		}
 
-//		if (DataProcess == 0) {
-//			if (ReceiveData != 0x55) {
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//				return;
-//			}
-//			if (ReceiveData == 0x55) {
-//				DataProcess = 1;
-//
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//				return;
-//			}
-//		} else if (DataProcess == 1) {
-			ReceivePID = ReceiveData;
-			ReceiveID = ReceivePID & 0x3f;
-			DEBUG_ReceivePID = ReceivePID;
-
-			DEBUG_UART_RX_Count++;
-		DEBUG_ReceiveID = ReceiveID;
-		DEBUG_DataProcess = DataProcess;
-		if (ReceiveID == 0x22) {
-			DEBUG_RID22_Count++;
-		}
-
-			if (ReceiveID == 0x22)  // ← 改成0x22
-				{
-			DEBUG_LIN_Send_Count++;
-			Lin_SendData(SWS_0x22_Data);
-			SWS_0x22_Flag = 0;
-			DataProcess = 0;
+		if (DataProcess == 0) {
+			if (ReceiveData != 0x55) {
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			}
+			DataProcess = 1;
 
 			LIN_RESET(&huart1);
 			HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
 			return;
-		} else {
+		} else if (DataProcess == 1) {
+			ReceivePID = ReceiveData;
+			ReceiveID = ReceivePID & 0x3f;
+			DEBUG_ReceivePID = ReceivePID;
+			DEBUG_UART_RX_Count++;
+			DEBUG_ReceiveID = ReceiveID;
+			DEBUG_DataProcess = DataProcess;
+
+#if LINProfile_IP5PM_H
+			if (ReceiveID == 0x22) {
+				DEBUG_RID22_Count++;
+				DEBUG_LIN_Send_Count++;
+				Lin_SendData(SWS_0x22_Data);
+				SWS_0x22_Flag = 0;
+				DataProcess = 0;
+
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			}
+#else
+			if (ReceiveID == 0x00) {
+				TA531_LIN_SWS.LIN_SWS_050ms_PDU00_RC_4++;
+				if (TA531_LIN_SWS.LIN_SWS_050ms_PDU00_RC_4 > 15) {
+					TA531_LIN_SWS.LIN_SWS_050ms_PDU00_RC_4 = 0;
+				}
+				Lin_SendData(SWS_0x00_Data);
+				SWS_0x00_Flag = 0;
+				DataProcess = 0;
+
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			} else if (ReceiveID == 0x02) {
+				Lin_SendData(SWS_0x02_Data);
+				SWS_0x02_Flag = 0;
+				DataProcess = 0;
+
+				LIN_RESET(&huart1);
+				HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+				return;
+			}
+#endif
+
 			DataReceiveflag = 1;
 			DataProcess = 2;
 
 			LIN_RESET(&huart1);
 			HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
 			return;
+		} else if (DataProcess == 2) {
+			if (DtRxProcess < 8) {
+				LinReceiveData[DtRxProcess] = ReceiveData;
+				DtRxProcess += 1;
+				if (DtRxProcess == 8) {
+					DtRxProcess = 0;
+					DataProcess = 3;
+
+					LIN_RESET(&huart1);
+					HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+					return;
+				}
+			}
+		} else if (DataProcess == 3) {
+			ReceiveCheckSum = ReceiveData;
+			FrameReceiveOverFlag = 1;
+			DataProcess = 0;
 		}
-
-//		if(DataProcess == 0)
-//		{
-//			if(ReceiveData != 0x55)
-//			{
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
-//				return ;
-//			}
-//			if(ReceiveData == 0x55)
-//			{
-//				DataProcess = 1 ;
-//
-//				LIN_RESET(&huart1);
-//				HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
-//				return ;
-//			}
-//		}
-////		111111111111111111111111111111111111111111111111111111111111111
-//		else if(DataProcess == 1)
-//		{
-//		    ReceivePID = ReceiveData;
-//		    ReceiveID = ReceivePID & 0x3f;
-//
-//		    DEBUG_UART_RX_Count++;
-//		    DEBUG_ReceiveID = ReceiveID;
-//		    DEBUG_DataProcess = DataProcess;
-//
-//		    if(ReceiveID == 0x22)  // ← 改成0x22
-//		    {
-//		        DEBUG_LIN_Send_Count++;
-//		        Lin_SendData(SWS_0x22_Data);
-//		        SWS_0x22_Flag = 0;
-//		        DataProcess = 0;
-//
-//		        LIN_RESET(&huart1);
-//		        HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//		        return;
-//		    }
-//		    else
-//		    {
-//		        DataReceiveflag = 1;
-//		        DataProcess = 2;
-//
-//		        LIN_RESET(&huart1);
-//		        HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
-//		        return;
-//		    }
-//		}
-//		else if(DataProcess == 2)
-//		{
-//			if(DtRxProcess<8)
-//			{
-//				LinReceiveData[DtRxProcess] = ReceiveData ;
-//				DtRxProcess += 1 ;
-//				if(DtRxProcess == 8)
-//				{
-//					DtRxProcess = 0 ;
-//					DataProcess = 3 ;
-//
-//					LIN_RESET(&huart1);
-//					HAL_UART_Receive_IT(&huart1,u1RxData, LIN_Data_LENGTH );
-//					return ;
-//				}
-//			}
-//		}
-//		else if(DataProcess == 3)
-//		{
-//			ReceiveCheckSum = ReceiveData ;
-//			FrameReceiveOverFlag = 1 ;
-//			DataProcess = 0 ;
-//		}
-
 	}
 	LIN_RESET(&huart1);
 	HAL_UART_Receive_IT(&huart1, u1RxData, LIN_Data_LENGTH);
+
+//	LIN_RESET(&huart2);
+//	HAL_UART_Receive_IT(&huart2,u2RxData, LIN_Data_LENGTH );
+//
+//	LIN_RESET(&huart3);
+//	HAL_UART_Receive_IT(&huart3,u3RxData, LIN_Data_LENGTH );
 }
 
 void UART_Init(UART_HandleTypeDef *handle, uint32_t data_length) {
