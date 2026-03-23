@@ -3188,13 +3188,14 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 					TSA_Ack_DATA[5] = 1;
 					TSA4_0x103_Flag = 1;
 					lvLED_Sts_LIN = 2;
-				} else if (FDCAN1_RxHeader.Identifier == 0x104)	//TSA_LIN_SWS G3.0
-						{
-					// 解析CAN数据
-
-					TA531_LIN_SWS_G3.CCSwStsAlvRC_l = (buf_rec[1] >> 0) & 0x0f;
-					TA531_LIN_SWS_G3.SWSSelUpSwAL_l = (buf_rec[1] >> 4) & 0x03;
-					TA531_LIN_SWS_G3.SWSSelDwnSwAL_l = (buf_rec[1] >> 6) & 0x03;
+					} else if (FDCAN1_RxHeader.Identifier == 0x104)	//TSA_LIN_SWS G3.0
+							{
+						// 解析CAN数据
+	
+						TA531_LIN_SWS_G3.CCSwStsChksm = buf_rec[0];
+						TA531_LIN_SWS_G3.CCSwStsAlvRC_l = (buf_rec[1] >> 0) & 0x0f;
+						TA531_LIN_SWS_G3.SWSSelUpSwAL_l = (buf_rec[1] >> 4) & 0x03;
+						TA531_LIN_SWS_G3.SWSSelDwnSwAL_l = (buf_rec[1] >> 6) & 0x03;
 
 					DEBUG_CAN_Up = TA531_LIN_SWS_G3.SWSSelUpSwAL_l;
 					DEBUG_CAN_Down = TA531_LIN_SWS_G3.SWSSelDwnSwAL_l;
@@ -3715,11 +3716,7 @@ void Lin_SendData(uint8_t *data) {
 void Lin_DataProcess_loop(void)	//asap, if need to deal with LIN data; if not ,seems no use
 {
 	//// ========== 直接打包 SWS_0x22_Data，无条件执行（像main1_1.c一样）==========
-//	SWS_0x22_Data[0] = 0;	//	CCSwStsChksm
-	static uint8_t counter = 0;  // 静态变量，保持计数状态
-
-	SWS_0x22_Data[0] = counter;  // 赋值给Byte 0
-	counter++;
+	SWS_0x22_Data[0] = TA531_LIN_SWS_G3.CCSwStsChksm;
 
 	SWS_0x22_Data[1] = ((TA531_LIN_SWS_G3.CCSwStsAlvRC_l & 0x0f) << 0)
 			+ ((TA531_LIN_SWS_G3.SWSSelUpSwAL_l & 0x03) << 4)
