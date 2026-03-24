@@ -118,6 +118,12 @@ uint16_t CAN2_2Ser_ID[32];
 
 #define LINProfile_IP5PM_L 0
 #define LINProfile_IP5PM_H 1
+
+// Motor motion loop timing (ms)
+#define MOTOR_INIT_RETRY_MS          20U
+#define MOTOR_LOOP_INTERVAL_MS       10U
+#define MOTOR_WAIT_POLL_MS           20U
+#define MOTOR_SEND_GAP_MS            1U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -995,7 +1001,7 @@ int main(void) {
 //				itoa(TA531_RC1.TA531_RC_Y_trg ,str1,10);
 //				OLED_ShowString(OLED_I2C_ch ,OLED_type,12, 2, str1);
 
-				HAL_Delay(100);
+				HAL_Delay(MOTOR_LOOP_INTERVAL_MS);
 
 				uint8_t protection_status = Motor_Protection_Check(
 						TA531_RC1.TA531_RC_X_act, TA531_RC1.TA531_RC_Y_act,
@@ -4092,11 +4098,11 @@ void MoC_Init() {
 	MotorInit_M1 = 1;	//init wait
 	MotorInit_M2 = 1;	//init wait
 	MotoCtrl_PackSend12();
-	HAL_Delay(500);
+	HAL_Delay(MOTOR_INIT_RETRY_MS);
 
 	while ((MotorInit_M1 != 2) | (MotorInit_M2 != 2)) {
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M1&2 Init Wait ");
-		HAL_Delay(500);
+		HAL_Delay(MOTOR_INIT_RETRY_MS);
 		MotoCtrl_PackSend12();
 	}
 
@@ -4119,11 +4125,11 @@ void MoC_Init() {
 
 	MotorInit_M3 = 1;	//init wait
 	MotoCtrl_PackSend3();
-	HAL_Delay(500);
+	HAL_Delay(MOTOR_INIT_RETRY_MS);
 
 	while (MotorInit_M3 != 2) {
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M3 Init Wait ");
-		HAL_Delay(500);
+		HAL_Delay(MOTOR_INIT_RETRY_MS);
 		MotoCtrl_PackSend3();
 	}
 
@@ -4237,7 +4243,7 @@ void MoC_Init() {
 
 					MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
 							TA531_RC1.TA531_RC_Y_trg);
-					HAL_Delay(300);
+					HAL_Delay(MOTOR_LOOP_INTERVAL_MS);
 
 					itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
 					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
@@ -4598,7 +4604,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4622,7 +4628,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4646,7 +4652,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4688,7 +4694,7 @@ void MotoCtrl_PackSend12() {
 				MotrCtrl_2_DATA);
 	HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &MotrCtrl_1_TxHeader,
 				MotrCtrl_1_DATA);
-	HAL_Delay(20);
+	HAL_Delay(MOTOR_SEND_GAP_MS);
 }
 
 //void MotoCtrl_PackSend2()
@@ -4718,7 +4724,7 @@ void MotoCtrl_PackSend3() {
 
 	HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &MotrCtrl_3_TxHeader,
 			MotrCtrl_3_DATA);
-	HAL_Delay(20);
+	HAL_Delay(MOTOR_SEND_GAP_MS);
 }
 
 void MotoCtrl_PackSend4() {
@@ -5229,7 +5235,7 @@ void Motor_Protection_EmergencyStop(void) {
 	Motor_Protection_Reset();
 	Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 	Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-	(void) WaitMotorToTargetWithProtection(3000, 100, false);
+	(void) WaitMotorToTargetWithProtection(3000, MOTOR_WAIT_POLL_MS, false);
 
 	TA531_RC1.TA531_RC_Reset = 0;
 	TA531_RC1.TA531_RC_Z_code = 0;
