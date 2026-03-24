@@ -118,6 +118,12 @@ uint16_t CAN2_2Ser_ID[32];
 
 #define LINProfile_IP5PM_L 0
 #define LINProfile_IP5PM_H 1
+
+// Motor motion loop timing (ms)
+#define MOTOR_INIT_RETRY_MS          100U
+#define MOTOR_LOOP_INTERVAL_MS       10U
+#define MOTOR_WAIT_POLL_MS           100U
+#define MOTOR_SEND_GAP_MS            1U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -340,6 +346,7 @@ struct Motor_Protection_TypeDef {
 	int8_t Y_direction_changes;
 	uint16_t stuck_counter;
 	uint16_t movement_timeout;
+	uint32_t last_progress_tick;
 	uint8_t protection_triggered;
 	uint8_t error_type;
 	uint32_t total_errors;
@@ -352,7 +359,10 @@ struct Motor_Protection_TypeDef Motor_Protection;
 #define MAX_STUCK_COUNT               8
 #define MAX_MOVEMENT_TIMEOUT         100
 #define MOVE_WAIT_TIMEOUT_MS        8000
+#define MOVE_WAIT_TIMEOUT_INIT_MS   15000
 #define POSITION_TOLERANCE             5
+#define REACH_POSITION_TOLERANCE       2
+#define MAX_MOVEMENT_TIMEOUT_MS (MAX_MOVEMENT_TIMEOUT * MOTOR_WAIT_POLL_MS)
 // ==================================
 
 /* USER CODE END PV */
@@ -637,6 +647,7 @@ int main(void) {
 
 	char str1[16] = { 0 };
 	char str2[16] = { 0 };
+	char oled_line[17] = { 0 };
 	itoa(Version_A, str1, 10);
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 5, 0, ".");
@@ -995,7 +1006,7 @@ int main(void) {
 //				itoa(TA531_RC1.TA531_RC_Y_trg ,str1,10);
 //				OLED_ShowString(OLED_I2C_ch ,OLED_type,12, 2, str1);
 
-				HAL_Delay(100);
+				HAL_Delay(MOTOR_LOOP_INTERVAL_MS);
 
 				uint8_t protection_status = Motor_Protection_Check(
 						TA531_RC1.TA531_RC_X_act, TA531_RC1.TA531_RC_Y_act,
@@ -1235,66 +1246,17 @@ int main(void) {
 
 		if (id1 == 0)	//id1 = 0, no RC
 				{
-//		    // ===== 添加第0行：CAN/LIN调试信息 =====
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "C:");
-//		    itoa(DEBUG_CAN_Up, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 0, str1);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 0, "/");
-//		    itoa(DEBUG_CAN_Down, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 0, "L:");
-//		    sprintf(str1, "%02X", DEBUG_LIN_Byte1);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, "S:");
-//		    sprintf(str1, "%02X", DEBUG_LIN_Checksum);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
-//		    // ========================================
-//
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "RX:");
-//		    itoa(DEBUG_UART_RX_Count, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 1, "ID:");
-//		    sprintf(str1, "%02X", DEBUG_ReceiveID);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, "TX:");
-//		    itoa(DEBUG_LIN_Send_Count, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "PID:");
-//		    sprintf(str1, "%02X", u1RxData[0]);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, "St:");
-//		    itoa(DEBUG_DataProcess, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
+			snprintf(oled_line, sizeof(oled_line), "L1:%3d L2:%3d",
+					TA531SysEnv.TA531_env_LightA1, TA531SysEnv.TA531_env_LightA2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, oled_line);
 
-			itoa(TA531SysEnv.TA531_env_LightA1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, str1);
+			snprintf(oled_line, sizeof(oled_line), "L3:%3d L4:%3d",
+					TA531SysEnv.TA531_env_LightA3, TA531SysEnv.TA531_env_LightA4);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, oled_line);
 
-			itoa(TA531SysEnv.TA531_env_LightD1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
-
-			itoa(TA531SysEnv.TA531_env_ADC1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, str1);
-			itoa(TA531SysEnv.TA531_env_ADC2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, str1);
+			snprintf(oled_line, sizeof(oled_line), "A1:%3d A2:%3d",
+					TA531SysEnv.TA531_env_ADC1, TA531SysEnv.TA531_env_ADC2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, oled_line);
 		}
 
 		if (TSA3_0x52_Flag == 1) {
@@ -1746,52 +1708,19 @@ int main(void) {
 		}
 		if (id1 == 1)  // MoC模式下显示
 				{
-			// 第0行：CAN, LIN, 校验和
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "C:");
-			itoa(DEBUG_CAN_Up, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 0, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 0, "/");
-			itoa(DEBUG_CAN_Down, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
+			snprintf(oled_line, sizeof(oled_line), "X:%4d Y:%4d",
+					TA531_RC1.TA531_RC_X_act, TA531_RC1.TA531_RC_Y_act);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, oled_line);
 
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 0, "L:");
-			sprintf(str1, "%02X", DEBUG_LIN_Byte1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, str1);
+			snprintf(oled_line, sizeof(oled_line), "L1:%3d L2:%3d",
+					TA531SysEnv.TA531_env_LightA1, TA531SysEnv.TA531_env_LightA2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, oled_line);
 
-			// ===== 新增：显示校验和 =====
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, "S:");
-			sprintf(str1, "%02X", DEBUG_LIN_Checksum);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
-			// ===========================
+			snprintf(oled_line, sizeof(oled_line), "A1:%3d A2:%3d",
+					TA531SysEnv.TA531_env_ADC1, TA531SysEnv.TA531_env_ADC2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, oled_line);
 
-			// 第1行：光敏传感器值（4个）
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "L:");
-			itoa(TA531SysEnv.TA531_env_LightA1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 1, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 5, 1, " ");
-
-			itoa(TA531SysEnv.TA531_env_LightA2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 1, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 1, " ");
-
-			itoa(TA531SysEnv.TA531_env_LightA3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 1, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 1, " ");
-
-			itoa(TA531SysEnv.TA531_env_LightA4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 14, 1, str1);
-
-			// 第2行：X坐标（实际位置）
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "X:");
-			itoa(TA531_RC1.TA531_RC_X_act, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 2, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, "     ");  // 清空多余字符
-
-			// 第3行：Y坐标（实际位置）
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "Y:");
-			itoa(TA531_RC1.TA531_RC_Y_act, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 3, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 3, "     ");  // 清空多余字符
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "                ");
 		}
 		// =======================================
 	}  //while
@@ -4037,8 +3966,10 @@ bool WaitMotorToTargetWithProtection(uint32_t timeout_ms, uint16_t poll_ms,
 		bool trigger_emergency) {
 	uint32_t start_tick = HAL_GetTick();
 
-	while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
-			|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
+	while ((abs(TA531_RC1.TA531_RC_X_act - TA531_RC1.TA531_RC_X_trg)
+			> REACH_POSITION_TOLERANCE)
+			|| (abs(TA531_RC1.TA531_RC_Y_act - TA531_RC1.TA531_RC_Y_trg)
+					> REACH_POSITION_TOLERANCE)) {
 		MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
 
 		if (Motor_Protection_Check(TA531_RC1.TA531_RC_X_act,
@@ -4092,11 +4023,11 @@ void MoC_Init() {
 	MotorInit_M1 = 1;	//init wait
 	MotorInit_M2 = 1;	//init wait
 	MotoCtrl_PackSend12();
-	HAL_Delay(500);
+	HAL_Delay(MOTOR_INIT_RETRY_MS);
 
 	while ((MotorInit_M1 != 2) | (MotorInit_M2 != 2)) {
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M1&2 Init Wait ");
-		HAL_Delay(500);
+		HAL_Delay(MOTOR_INIT_RETRY_MS);
 		MotoCtrl_PackSend12();
 	}
 
@@ -4119,11 +4050,11 @@ void MoC_Init() {
 
 	MotorInit_M3 = 1;	//init wait
 	MotoCtrl_PackSend3();
-	HAL_Delay(500);
+	HAL_Delay(MOTOR_INIT_RETRY_MS);
 
 	while (MotorInit_M3 != 2) {
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M3 Init Wait ");
-		HAL_Delay(500);
+		HAL_Delay(MOTOR_INIT_RETRY_MS);
 		MotoCtrl_PackSend3();
 	}
 
@@ -4237,7 +4168,7 @@ void MoC_Init() {
 
 					MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
 							TA531_RC1.TA531_RC_Y_trg);
-					HAL_Delay(300);
+					HAL_Delay(MOTOR_LOOP_INTERVAL_MS);
 
 					itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
 					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
@@ -4598,7 +4529,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_INIT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4622,7 +4553,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_INIT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4646,7 +4577,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, 200, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_INIT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4688,7 +4619,7 @@ void MotoCtrl_PackSend12() {
 				MotrCtrl_2_DATA);
 	HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &MotrCtrl_1_TxHeader,
 				MotrCtrl_1_DATA);
-	HAL_Delay(20);
+	HAL_Delay(MOTOR_SEND_GAP_MS);
 }
 
 //void MotoCtrl_PackSend2()
@@ -4718,7 +4649,7 @@ void MotoCtrl_PackSend3() {
 
 	HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &MotrCtrl_3_TxHeader,
 			MotrCtrl_3_DATA);
-	HAL_Delay(20);
+	HAL_Delay(MOTOR_SEND_GAP_MS);
 }
 
 void MotoCtrl_PackSend4() {
@@ -5094,6 +5025,7 @@ void Motor_Protection_Init(void) {
 	Motor_Protection.Y_direction_changes = 0;
 	Motor_Protection.stuck_counter = 0;
 	Motor_Protection.movement_timeout = 0;
+	Motor_Protection.last_progress_tick = HAL_GetTick();
 	Motor_Protection.protection_triggered = 0;
 	Motor_Protection.error_type = 0;
 	Motor_Protection.total_errors = 0;
@@ -5104,12 +5036,14 @@ void Motor_Protection_Reset(void) {
 	Motor_Protection.Y_direction_changes = 0;
 	Motor_Protection.stuck_counter = 0;
 	Motor_Protection.movement_timeout = 0;
+	Motor_Protection.last_progress_tick = HAL_GetTick();
 	Motor_Protection.protection_triggered = 0;
 	Motor_Protection.error_type = 0;
 }
 
 uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
 		int16_t target_X, int16_t target_Y) {
+	uint32_t now_tick = HAL_GetTick();
 
 	if (MOTOR_PROTECTION_ENABLED == 0) {
 		return 0;
@@ -5124,8 +5058,9 @@ uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
 
 	// ===== 跳过无效采样（位置没更新）=====
 	if (delta_X == 0 && delta_Y == 0) {
-		Motor_Protection.movement_timeout++;
-		if (Motor_Protection.movement_timeout >= MAX_MOVEMENT_TIMEOUT) {
+		Motor_Protection.movement_timeout = now_tick
+				- Motor_Protection.last_progress_tick;
+		if (Motor_Protection.movement_timeout >= MAX_MOVEMENT_TIMEOUT_MS) {
 			Motor_Protection.protection_triggered = 1;
 			Motor_Protection.error_type = 3;
 			Motor_Protection.total_errors++;
@@ -5181,14 +5116,9 @@ uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
 		Motor_Protection.stuck_counter = 0;
 	}
 
-	// 检测3: 运动超时
-	Motor_Protection.movement_timeout++;
-	if (Motor_Protection.movement_timeout >= MAX_MOVEMENT_TIMEOUT) {
-		Motor_Protection.protection_triggered = 1;
-		Motor_Protection.error_type = 3;
-		Motor_Protection.total_errors++;
-		return 1;
-	}
+	// 检测3: 运动超时（基于毫秒）
+	Motor_Protection.last_progress_tick = now_tick;
+	Motor_Protection.movement_timeout = 0;
 
 	Motor_Protection.last_X_pos = current_X;
 	Motor_Protection.last_Y_pos = current_Y;
@@ -5229,7 +5159,7 @@ void Motor_Protection_EmergencyStop(void) {
 	Motor_Protection_Reset();
 	Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 	Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-	(void) WaitMotorToTargetWithProtection(3000, 100, false);
+	(void) WaitMotorToTargetWithProtection(3000, MOTOR_WAIT_POLL_MS, false);
 
 	TA531_RC1.TA531_RC_Reset = 0;
 	TA531_RC1.TA531_RC_Z_code = 0;
