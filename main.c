@@ -358,6 +358,7 @@ struct Motor_Protection_TypeDef Motor_Protection;
 #define MAX_STUCK_COUNT               8
 #define MAX_MOVEMENT_TIMEOUT         100
 #define MOVE_WAIT_TIMEOUT_MS        8000
+#define MOVE_WAIT_TIMEOUT_INIT_MS   15000
 #define POSITION_TOLERANCE             5
 // ==================================
 
@@ -4604,7 +4605,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, MOTOR_WAIT_POLL_MS, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_INIT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4628,7 +4629,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, MOTOR_WAIT_POLL_MS, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_INIT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
@@ -4652,7 +4653,7 @@ void MoC_Init() {
 		Motor_Protection_Reset();
 		Motor_Protection.last_X_pos = TA531_RC1.TA531_RC_X_act;
 		Motor_Protection.last_Y_pos = TA531_RC1.TA531_RC_Y_act;
-		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_MS, MOTOR_WAIT_POLL_MS, true)) {
+		if (!WaitMotorToTargetWithProtection(MOVE_WAIT_TIMEOUT_INIT_MS, MOTOR_WAIT_POLL_MS, true)) {
 			return;
 		}
 
