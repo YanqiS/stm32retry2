@@ -120,9 +120,9 @@ uint16_t CAN2_2Ser_ID[32];
 #define LINProfile_IP5PM_H 1
 
 // Motor motion loop timing (ms)
-#define MOTOR_INIT_RETRY_MS          20U
+#define MOTOR_INIT_RETRY_MS          100U
 #define MOTOR_LOOP_INTERVAL_MS       10U
-#define MOTOR_WAIT_POLL_MS           20U
+#define MOTOR_WAIT_POLL_MS           100U
 #define MOTOR_SEND_GAP_MS            1U
 /* USER CODE END PD */
 
@@ -346,6 +346,7 @@ struct Motor_Protection_TypeDef {
 	int8_t Y_direction_changes;
 	uint16_t stuck_counter;
 	uint16_t movement_timeout;
+	uint32_t last_progress_tick;
 	uint8_t protection_triggered;
 	uint8_t error_type;
 	uint32_t total_errors;
@@ -360,6 +361,8 @@ struct Motor_Protection_TypeDef Motor_Protection;
 #define MOVE_WAIT_TIMEOUT_MS        8000
 #define MOVE_WAIT_TIMEOUT_INIT_MS   15000
 #define POSITION_TOLERANCE             5
+#define REACH_POSITION_TOLERANCE       2
+#define MAX_MOVEMENT_TIMEOUT_MS (MAX_MOVEMENT_TIMEOUT * MOTOR_WAIT_POLL_MS)
 // ==================================
 
 /* USER CODE END PV */
@@ -4044,8 +4047,10 @@ bool WaitMotorToTargetWithProtection(uint32_t timeout_ms, uint16_t poll_ms,
 		bool trigger_emergency) {
 	uint32_t start_tick = HAL_GetTick();
 
-	while ((TA531_RC1.TA531_RC_X_act != TA531_RC1.TA531_RC_X_trg)
-			|| (TA531_RC1.TA531_RC_Y_act != TA531_RC1.TA531_RC_Y_trg)) {
+	while ((abs(TA531_RC1.TA531_RC_X_act - TA531_RC1.TA531_RC_X_trg)
+			> REACH_POSITION_TOLERANCE)
+			|| (abs(TA531_RC1.TA531_RC_Y_act - TA531_RC1.TA531_RC_Y_trg)
+					> REACH_POSITION_TOLERANCE)) {
 		MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
 
 		if (Motor_Protection_Check(TA531_RC1.TA531_RC_X_act,
@@ -5101,6 +5106,7 @@ void Motor_Protection_Init(void) {
 	Motor_Protection.Y_direction_changes = 0;
 	Motor_Protection.stuck_counter = 0;
 	Motor_Protection.movement_timeout = 0;
+	Motor_Protection.last_progress_tick = HAL_GetTick();
 	Motor_Protection.protection_triggered = 0;
 	Motor_Protection.error_type = 0;
 	Motor_Protection.total_errors = 0;
@@ -5111,12 +5117,14 @@ void Motor_Protection_Reset(void) {
 	Motor_Protection.Y_direction_changes = 0;
 	Motor_Protection.stuck_counter = 0;
 	Motor_Protection.movement_timeout = 0;
+	Motor_Protection.last_progress_tick = HAL_GetTick();
 	Motor_Protection.protection_triggered = 0;
 	Motor_Protection.error_type = 0;
 }
 
 uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
 		int16_t target_X, int16_t target_Y) {
+	uint32_t now_tick = HAL_GetTick();
 
 	if (MOTOR_PROTECTION_ENABLED == 0) {
 		return 0;
@@ -5131,8 +5139,9 @@ uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
 
 	// ===== 跳过无效采样（位置没更新）=====
 	if (delta_X == 0 && delta_Y == 0) {
-		Motor_Protection.movement_timeout++;
-		if (Motor_Protection.movement_timeout >= MAX_MOVEMENT_TIMEOUT) {
+		Motor_Protection.movement_timeout = now_tick
+				- Motor_Protection.last_progress_tick;
+		if (Motor_Protection.movement_timeout >= MAX_MOVEMENT_TIMEOUT_MS) {
 			Motor_Protection.protection_triggered = 1;
 			Motor_Protection.error_type = 3;
 			Motor_Protection.total_errors++;
@@ -5188,14 +5197,9 @@ uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
 		Motor_Protection.stuck_counter = 0;
 	}
 
-	// 检测3: 运动超时
-	Motor_Protection.movement_timeout++;
-	if (Motor_Protection.movement_timeout >= MAX_MOVEMENT_TIMEOUT) {
-		Motor_Protection.protection_triggered = 1;
-		Motor_Protection.error_type = 3;
-		Motor_Protection.total_errors++;
-		return 1;
-	}
+	// 检测3: 运动超时（基于毫秒）
+	Motor_Protection.last_progress_tick = now_tick;
+	Motor_Protection.movement_timeout = 0;
 
 	Motor_Protection.last_X_pos = current_X;
 	Motor_Protection.last_Y_pos = current_Y;
