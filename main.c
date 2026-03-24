@@ -647,6 +647,7 @@ int main(void) {
 
 	char str1[16] = { 0 };
 	char str2[16] = { 0 };
+	char oled_line[17] = { 0 };
 	itoa(Version_A, str1, 10);
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 5, 0, ".");
@@ -1245,66 +1246,17 @@ int main(void) {
 
 		if (id1 == 0)	//id1 = 0, no RC
 				{
-//		    // ===== 添加第0行：CAN/LIN调试信息 =====
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "C:");
-//		    itoa(DEBUG_CAN_Up, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 0, str1);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 0, "/");
-//		    itoa(DEBUG_CAN_Down, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 0, "L:");
-//		    sprintf(str1, "%02X", DEBUG_LIN_Byte1);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, "S:");
-//		    sprintf(str1, "%02X", DEBUG_LIN_Checksum);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
-//		    // ========================================
-//
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "RX:");
-//		    itoa(DEBUG_UART_RX_Count, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 1, "ID:");
-//		    sprintf(str1, "%02X", DEBUG_ReceiveID);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, "TX:");
-//		    itoa(DEBUG_LIN_Send_Count, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 1, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "PID:");
-//		    sprintf(str1, "%02X", u1RxData[0]);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-//
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, "St:");
-//		    itoa(DEBUG_DataProcess, str1, 10);
-//		    OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
+			snprintf(oled_line, sizeof(oled_line), "L1:%3d L2:%3d",
+					TA531SysEnv.TA531_env_LightA1, TA531SysEnv.TA531_env_LightA2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, oled_line);
 
-			itoa(TA531SysEnv.TA531_env_LightA1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 1, str1);
-			itoa(TA531SysEnv.TA531_env_LightA4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 1, str1);
+			snprintf(oled_line, sizeof(oled_line), "L3:%3d L4:%3d",
+					TA531SysEnv.TA531_env_LightA3, TA531SysEnv.TA531_env_LightA4);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, oled_line);
 
-			itoa(TA531SysEnv.TA531_env_LightD1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, str1);
-			itoa(TA531SysEnv.TA531_env_LightD4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
-
-			itoa(TA531SysEnv.TA531_env_ADC1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, str1);
-			itoa(TA531SysEnv.TA531_env_ADC2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, str1);
+			snprintf(oled_line, sizeof(oled_line), "A1:%3d A2:%3d",
+					TA531SysEnv.TA531_env_ADC1, TA531SysEnv.TA531_env_ADC2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, oled_line);
 		}
 
 		if (TSA3_0x52_Flag == 1) {
@@ -1756,52 +1708,19 @@ int main(void) {
 		}
 		if (id1 == 1)  // MoC模式下显示
 				{
-			// 第0行：CAN, LIN, 校验和
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "C:");
-			itoa(DEBUG_CAN_Up, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 0, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 0, "/");
-			itoa(DEBUG_CAN_Down, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 0, str1);
+			snprintf(oled_line, sizeof(oled_line), "X:%4d Y:%4d",
+					TA531_RC1.TA531_RC_X_act, TA531_RC1.TA531_RC_Y_act);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, oled_line);
 
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 0, "L:");
-			sprintf(str1, "%02X", DEBUG_LIN_Byte1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 0, str1);
+			snprintf(oled_line, sizeof(oled_line), "L1:%3d L2:%3d",
+					TA531SysEnv.TA531_env_LightA1, TA531SysEnv.TA531_env_LightA2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, oled_line);
 
-			// ===== 新增：显示校验和 =====
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 0, "S:");
-			sprintf(str1, "%02X", DEBUG_LIN_Checksum);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, str1);
-			// ===========================
+			snprintf(oled_line, sizeof(oled_line), "A1:%3d A2:%3d",
+					TA531SysEnv.TA531_env_ADC1, TA531SysEnv.TA531_env_ADC2);
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, oled_line);
 
-			// 第1行：光敏传感器值（4个）
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "L:");
-			itoa(TA531SysEnv.TA531_env_LightA1, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 1, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 5, 1, " ");
-
-			itoa(TA531SysEnv.TA531_env_LightA2, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 1, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 1, " ");
-
-			itoa(TA531SysEnv.TA531_env_LightA3, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 1, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 1, " ");
-
-			itoa(TA531SysEnv.TA531_env_LightA4, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 14, 1, str1);
-
-			// 第2行：X坐标（实际位置）
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "X:");
-			itoa(TA531_RC1.TA531_RC_X_act, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 2, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, "     ");  // 清空多余字符
-
-			// 第3行：Y坐标（实际位置）
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "Y:");
-			itoa(TA531_RC1.TA531_RC_Y_act, str1, 10);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 2, 3, str1);
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 3, "     ");  // 清空多余字符
+			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "                ");
 		}
 		// =======================================
 	}  //while
