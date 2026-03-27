@@ -771,7 +771,11 @@ int main(void) {
 //	  HAL_Delay(500);
 
 	uint8_t temp1[4], temp2[4];
-	temp1[0] = 123;
+	int32_t flash_test_coord = 1234;
+	temp1[0] = flash_test_coord & 0xff;
+	temp1[1] = (flash_test_coord >> 8) & 0xff;
+	temp1[2] = (flash_test_coord >> 16) & 0xff;
+	temp1[3] = (flash_test_coord >> 24) & 0xff;
 	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Test");
 //	while( HAL_GPIO_ReadPin(ESP_TRG_STM_GPIO_Port,ESP_TRG_STM_Pin) )
 //	{
@@ -790,9 +794,12 @@ int main(void) {
 	SPI_Flash_WtritEnable();
 	HAL_Delay(5);
 	SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(int));
+	SPI_Flash_WaitNoBusy();
+	HAL_Delay(1);
 	HAL_Delay(5);
 	SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(int));
-	while (temp1[0] != temp2[0]) {
+	while ((temp1[0] != temp2[0]) || (temp1[1] != temp2[1])
+			|| (temp1[2] != temp2[2]) || (temp1[3] != temp2[3])) {
 		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Flash Test Err..");
 
 		SPI_Stop(Flash_SPI);
@@ -801,7 +808,11 @@ int main(void) {
 		SPI_Flash_Start(Flash_SPI);
 		HAL_Delay(5);
 
+		SPI_Flash_WtritEnable();
+		HAL_Delay(5);
 		SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(int));
+		SPI_Flash_WaitNoBusy();
+		HAL_Delay(1);
 		HAL_Delay(5);
 		SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(int));
 
